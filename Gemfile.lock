@@ -153,13 +153,9 @@ GEM
       oauth2 (~> 1.0)
       omniauth (~> 1.2)
     orm_adapter (0.5.0)
-<<<<<<< 8be4467e94247059474484d8df14f1773dc50142
     os (0.9.6)
     pg (0.20.0)
     public_suffix (2.0.5)
-=======
-    pg (0.20.0)
->>>>>>> [update] Update Gemfile for heroku
     puma (3.8.2)
     rack (2.0.1)
     rack-test (0.6.3)
