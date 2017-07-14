@@ -5,6 +5,8 @@ class RequestController < ApplicationController
   # request/:id
   # メールに添付されているURLを謳歌した場合に実行される
   def confirm
+
+    # TODO: ロジックが複雑なので、簡潔にしたい。
     @log = RequestLog.find_by(hashed_key: params[:id])
     # Check exist
     return redirect_to deny_path if @log.nil?
@@ -17,6 +19,9 @@ class RequestController < ApplicationController
       # 回答済みの場合はリダイレクト
       reply = ReplyLog.find_by(request_log_id: @log.id, user_id: @user.id)
       return redirect_to deny_path if reply
+
+      # 7日経っていたら回答URLを閉鎖
+      return redirect_to deny_path if EmailQueue.find_by(request_log_id: @log.id, email_type: Settings.email_type.readjustment)
 
       # すでにマッチングが成立していたらリダイレクト
       event = EventDate.find_by(request_log_id: @log)
@@ -73,29 +78,7 @@ class RequestController < ApplicationController
       user.reply_log.create!(request_log: log, result: true)
 
       # Write data to spread sheet
-      # TODO: ロジックを別の場所に移した方がよい
-      row = [
-        DateTime.current.strftime('%Y/%m/%d %H:%M:%S'),
-        'manma-system',
-        user.name,  # 家庭代表者氏名
-
-        event.emergency_contact,  # 家庭連絡先
-        'はい',     # 受け入れるか？
-        log.name,   # 家族留学者氏名
-        log.emergency,  # 家族留学者連絡先
-        '',
-        '',
-        '',
-        '',
-        '', # 受け入れ家庭の家族構成
-        event.hold_date.strftime('%Y/%m/%d'), # 実施日時
-        event.start_time.strftime('%H:%M:%S'),
-        event.end_time.strftime('%H:%M:%S'),
-        event.meeting_place
-      ]
-
-      authorizer, credentials = Google::SpreadSheetAuthorizeFromFileService.do(ENV['SPREAD_SHEET_AUTH_UNIQUE_ID'])
-      Google::SpreadSheetWriteService.do(credentials, row)
+      Google::AuthorizeWithWriteByServiceAccount.do(row(user, event, log))
 
       redirect_to thanks_path
     else
@@ -108,9 +91,9 @@ class RequestController < ApplicationController
     if params[:email] && params[:log_id]
       user = Contact.find_by(email_pc: params[:email]).user
       reply = ReplyLog.new(
-          user: user,
-          result: false,
-          request_log_id: params[:log_id]
+        user: user,
+        result: false,
+        request_log_id: params[:log_id]
       )
 
       reply.save!
@@ -137,14 +120,38 @@ class RequestController < ApplicationController
 
   def event_params
     params.require(:event_date).permit(
-                                   :user_id,
-                                   :request_log_id,
-                                   :meeting_place,
-                                   :emergency_contact,
-                                   :is_first_time,
-                                   :information,
-                                   :event_time
+      :user_id,
+      :request_log_id,
+      :meeting_place,
+      :emergency_contact,
+      :is_first_time,
+      :information,
+      :event_time
     )
+  end
+
+  def row(user, event, log)
+    participant_names = log.name.split(',')
+    participant_emails = log.email.split(',')
+    [
+      DateTime.current.strftime('%Y/%m/%d %H:%M:%S'),
+      'manma-system',
+      user.name, # 家庭代表者氏名
+
+      event.emergency_contact, # 家庭連絡先
+      'はい', # 受け入れるか？
+      participant_names[0],  # 家族留学参加者氏名1
+      participant_emails[0], # 家族留学者連絡先email1
+      participant_names[1],  # 家族留学参加者氏名2
+      participant_emails[1], # 家族留学者連絡先email2
+      participant_names[2],  # 家族留学参加者氏名2
+      participant_emails[2], # 家族留学者連絡先email2
+      '', # 受け入れ家庭の家族構成
+      event.hold_date.strftime('%Y/%m/%d'), # 実施日時
+      event.start_time.strftime('%H:%M:%S'),
+      event.end_time.strftime('%H:%M:%S'),
+      event.meeting_place
+    ]
   end
 
 end

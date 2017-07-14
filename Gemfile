@@ -35,6 +35,10 @@ gem 'jbuilder', '~> 2.5'
 # Use Capistrano for deployment
 # gem 'capistrano-rails', group: :development
 
+# Sweet alert
+gem 'rails-assets-sweetalert2', '~> 5.1.1', source: 'https://rails-assets.org'
+gem 'sweet-alert2-rails'
+
 gem 'devise'
 gem 'omniauth'
 gem 'omniauth-google-oauth2'
@@ -49,6 +53,7 @@ gem 'material_icons'
 
 # Google関連のAPIにアクセスするため
 gem 'google-api-client', '~> 0.11'
+gem 'google_drive'
 
 # constをymlで定義する
 gem 'settingslogic'
